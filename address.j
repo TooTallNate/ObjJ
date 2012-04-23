@@ -29,4 +29,5 @@
 @end
 
 // now we can do stuff for the main file
-var a = [[Address alloc] init];
+var a = [[Address alloc] initWithName: @"Greenfield Ave." city: @"San Rafael"];
+console.log(a);
