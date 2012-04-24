@@ -159,6 +159,8 @@ exports.eval = function(/*String*/ aString)
     return eval(exports.preprocess(aString).code());
 }
 
+var $ = '__NodObjC__';
+
 var Preprocessor = function(/*String*/ aString, /*CFURL|String*/ aURL, /*unsigned*/ flags)
 {
     this._URL = aURL;
@@ -183,6 +185,8 @@ var Preprocessor = function(/*String*/ aString, /*CFURL|String*/ aURL, /*unsigne
     this._classLookupTable = {};
 
     this._classVars = {};
+
+    CONCAT(this._buffer, 'var ' + $ + ' = require(\'NodObjC\');\n\n');
 
     /*var classObject = new objj_class();
     for (var i in classObject)
@@ -300,38 +304,51 @@ Preprocessor.prototype.brackets = function(/*Lexer*/ tokens, /*StringBuffer*/ aS
 
     else
     {
-        var selector = new StringBuffer();
-        //alert(tuples[0][0].toString() + "]" );
+
         // The first two arguments are always the receiver and the selector.
         if (tuples[0][0].atoms[0] == TOKEN_SUPER)
         {
-            CONCAT(aStringBuffer, "objj_msgSendSuper(");
-            CONCAT(aStringBuffer, "{ receiver:self, super_class:" + (this._classMethod ? this._currentSuperMetaClass : this._currentSuperClass ) + " }");
+            CONCAT(aStringBuffer, 'self.super(');
         }
         else
         {
-            CONCAT(aStringBuffer, "objj_msgSend(");
             CONCAT(aStringBuffer, tuples[0][0]);
+            CONCAT(aStringBuffer, '(');
         }
 
-        CONCAT(selector, tuples[0][1]);
+        // add the first (maybe only) piece of the selector
+        var firstSelector = tuples[0][1];
+        if (firstSelector[firstSelector.length - 1] === TOKEN_COLON) {
+          firstSelector = firstSelector.substring(0, firstSelector.length - 1);
+        }
+        CONCAT(aStringBuffer, '"');
+        CONCAT(aStringBuffer, firstSelector);
+        CONCAT(aStringBuffer, '"');
 
         var index = 1,
-            count = tuples.length,
-            marg_list = new StringBuffer();
+            count = tuples.length;
 
         for(; index < count; ++index)
         {
             var pair = tuples[index];
+            var sel  = pair[1];
+            var arg  = pair[0];
 
-            CONCAT(selector, pair[1]);
-            CONCAT(marg_list, ", " + pair[0]);
+            // add the arg
+            CONCAT(aStringBuffer, ", ");
+            CONCAT(aStringBuffer, arg);
+
+            // if there's another piece of the selector to add, then add it
+            if (sel) {
+                CONCAT(aStringBuffer, ", \"");
+                if (sel[sel.length - 1] === TOKEN_COLON) {
+                  sel = sel.substring(0, sel.length - 1);
+                }
+                CONCAT(aStringBuffer, sel);
+                CONCAT(aStringBuffer, '\"');
+            }
         }
 
-        CONCAT(aStringBuffer, ", \"");
-        CONCAT(aStringBuffer, selector); // FIXME: sel_getUid(selector + "") ?
-        CONCAT(aStringBuffer, '\"');
-        CONCAT(aStringBuffer, marg_list);
         CONCAT(aStringBuffer, ')');
     }
 }
@@ -342,10 +359,13 @@ Preprocessor.prototype.directive = function(tokens, aStringBuffer, allowedDirect
     var buffer = aStringBuffer ? aStringBuffer : new StringBuffer(),
         token = tokens.next();
 
-    // To provide compatibility with Objective-C files, we convert NSString literals into
-    // toll-freed JavaScript/CPString strings.
-    if (token.charAt(0) == TOKEN_DOUBLE_QUOTE)
+    // Convert @"strings" to NSString instances
+    if (token.charAt(0) === TOKEN_DOUBLE_QUOTE) {
+        CONCAT(buffer, $);
+        CONCAT(buffer, '.NSString("stringWithUTF8String", ');
         CONCAT(buffer, token);
+        CONCAT(buffer, ')');
+    }
 
     // Currently we simply swallow forward declarations and only provide them to allow
     // compatibility with Objective-C files.
@@ -405,10 +425,7 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
         token = "",
         category = NO,
         class_name = tokens.skip_whitespace(),
-        superclass_name = "Nil",
-
-        instance_methods = new StringBuffer(),
-        class_methods = new StringBuffer();
+        superclass_name = "Nil";
 
     if (!(/^\w/).test(class_name))
         throw new Error(this.error_message("*** Expected class name, found \"" + class_name + "\"."));
@@ -449,7 +466,13 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
             token = tokens.skip_whitespace();
         }
 
-        CONCAT(buffer, "{var the_class = objj_allocateClassPair(" + superclass_name + ", \"" + class_name + "\"),\nmeta_class = the_class.isa;");
+        CONCAT(buffer, ";(function () {\n  var the_class = ");
+        CONCAT(buffer, $);
+        CONCAT(buffer, '.');
+        CONCAT(buffer, superclass_name);
+        CONCAT(buffer, ".extend('");
+        CONCAT(buffer, class_name);
+        CONCAT(buffer, "');\n");
 
         // If we are at an opening curly brace ('{'), then we have an ivar declaration.
         if (token == TOKEN_OPEN_BRACE)
@@ -476,17 +499,15 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
                 }
                 else if (token == TOKEN_SEMICOLON)
                 {
-                    if (ivar_count++ === 0)
-                        CONCAT(buffer, "class_addIvars(the_class, [");
-                    else
-                        CONCAT(buffer, ", ");
 
                     var name = declaration[declaration.length - 1];
+                    var type = declaration[declaration.length - 2];
 
-                    if (this._flags & Preprocessor.Flags.IncludeTypeSignatures)
-                        CONCAT(buffer, "new objj_ivar(\"" + name + "\", \"" + types.slice(0, types.length - 1). join(" ") + "\")");
-                    else
-                        CONCAT(buffer, "new objj_ivar(\"" + name + "\")");
+                    CONCAT(buffer, "  the_class.addIvar('");
+                    CONCAT(buffer, name);
+                    CONCAT(buffer, "', ");
+                    CONCAT(buffer, type);
+                    CONCAT(buffer, ");\n");
 
                     ivar_names[name] = 1;
                     declaration = [];
@@ -529,10 +550,7 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
                 var getterName = accessor["getter"] || property,
                     getterCode = "(id)" + getterName + "\n{\nreturn " + ivar_name + ";\n}";
 
-                if (IS_NOT_EMPTY(instance_methods))
-                    CONCAT(instance_methods, ",\n");
-
-                CONCAT(instance_methods, this.method(new Lexer(getterCode), ivar_names));
+                CONCAT(buffer, this.method(new Lexer(getterCode), ivar_names));
 
                 // setter
                 if (accessor["readonly"])
@@ -553,17 +571,14 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
                 else
                     setterCode += ivar_name + " = newValue;\n}";
 
-                if (IS_NOT_EMPTY(instance_methods))
-                    CONCAT(instance_methods, ",\n");
-
-                CONCAT(instance_methods, this.method(new Lexer(setterCode), ivar_names));
+                CONCAT(buffer, this.method(new Lexer(setterCode), ivar_names));
             }
         }
         else
             tokens.previous();
 
         // We must make a new class object for our class definition.
-        CONCAT(buffer, "objj_registerClassPair(the_class);\n");
+        CONCAT(buffer, "  the_class.register();\n");
     }
 
     if (!ivar_names)
@@ -575,19 +590,15 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
         {
             this._classMethod = true;
 
-            if (IS_NOT_EMPTY(class_methods))
-                CONCAT(class_methods, ", ");
-
-            CONCAT(class_methods, this.method(tokens, this._classVars));
+            CONCAT(buffer, this.method(tokens, this._classVars));
+            CONCAT(buffer, '\n\n');
         }
         else if (token == TOKEN_MINUS)
         {
             this._classMethod = false;
 
-            if (IS_NOT_EMPTY(instance_methods))
-                CONCAT(instance_methods, ", ");
-
-            CONCAT(instance_methods, this.method(tokens, ivar_names));
+            CONCAT(buffer, this.method(tokens, ivar_names));
+            CONCAT(buffer, '\n\n');
         }
         // If we reach a # symbol, we may be at a C preprocessor directive.
         else if (token == TOKEN_HASH)
@@ -607,21 +618,8 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
         //    throw new SyntaxError(this.error_message("*** Expected a method declaration, or \"@end\", found \"" + token + "\"."));
     }
 
-    if (IS_NOT_EMPTY(instance_methods))
-    {
-        CONCAT(buffer, "class_addMethods(the_class, [");
-        CONCAT(buffer, instance_methods);
-        CONCAT(buffer, "]);\n");
-    }
-
-    if (IS_NOT_EMPTY(class_methods))
-    {
-        CONCAT(buffer, "class_addMethods(meta_class, [");
-        CONCAT(buffer, class_methods);
-        CONCAT(buffer, "]);\n");
-    }
-
-    CONCAT(buffer, '}');
+    // finish the function statement and execute it
+    CONCAT(buffer, '})();');
 
     this._currentClass = "";
 }
@@ -647,11 +645,23 @@ Preprocessor.prototype._import = function(tokens)
     else
         throw new SyntaxError(this.error_message("*** Expecting '<' or '\"', found \"" + token + "\"."));
 
-    CONCAT(this._buffer, "objj_executeFile(\"");
+    CONCAT(this._buffer, $);
+    CONCAT(this._buffer, ".import(\'");
     CONCAT(this._buffer, URLString);
-    CONCAT(this._buffer, isQuoted ? "\", YES);" : "\", NO);");
+    CONCAT(this._buffer, "\');\n");
+    //CONCAT(this._buffer, isQuoted ? "\", YES);" : "\", NO);");
 
     this._dependencies.push({ path: URLString, isQuoted: isQuoted });
+}
+
+function map_type (type) {
+  if (type === 'void') {
+    return '"v"';
+  } else if (type === 'id') {
+    return '"@"';
+  } else {
+    return type;
+  }
 }
 
 Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
@@ -731,16 +741,32 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
     var index = 0,
         count = parameters.length;
 
-    CONCAT(buffer, "new objj_method(sel_getUid(\"");
+    console.error(types)
+    CONCAT(buffer, "  the_class.addMethod(\"");
+
+    // first the selector
     CONCAT(buffer, selector);
-    CONCAT(buffer, "\"), function");
+
+    // then the types
+    CONCAT(buffer, "\", { retval: ");
+    CONCAT(buffer, map_type(types[0]));
+    CONCAT(buffer, ", args: [ ");
+    for (var i = 1; i < types.length; i++) {
+      CONCAT(buffer, map_type(types[1]));
+      if (i+1 != types.length) {
+        CONCAT(buffer, ', ');
+      }
+    }
+    CONCAT(buffer, " ]");
+    CONCAT(buffer, " }, ");
 
     this._currentSelector = selector;
 
-    if (this._flags & Preprocessor.Flags.IncludeDebugSymbols)
-        CONCAT(buffer, " $" + this._currentClass + "__" + selector.replace(/:/g, "_"));
+    //if (this._flags & Preprocessor.Flags.IncludeDebugSymbols)
+    //    CONCAT(buffer, " $" + this._currentClass + "__" + selector.replace(/:/g, "_"));
 
-    CONCAT(buffer, "(self, _cmd");
+    // finally the function implementation
+    CONCAT(buffer, "function (self, _cmd");
 
     for (; index < count; ++index)
     {
@@ -748,12 +774,14 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
         CONCAT(buffer, parameters[index]);
     }
 
-    CONCAT(buffer, ")\n{ with(self)\n{");
+    CONCAT(buffer, ") {\n    with (self) {\n");
+    CONCAT(buffer, "// BEGIN METHOD IMPLEMENTATION\n");
     CONCAT(buffer, this.preprocess(tokens, null, TOKEN_CLOSE_BRACE, TOKEN_OPEN_BRACE));
-    CONCAT(buffer, "}\n}");
+    CONCAT(buffer, "// END METHOD IMPLEMENTATION\n");
+    CONCAT(buffer, "    }\n  }");
     // TODO: actually use Flags.IncludeTypeSignatures flag instead of tying to Flags.IncludeDebugSymbols
-    if (this._flags & Preprocessor.Flags.IncludeDebugSymbols) //flags.IncludeTypeSignatures)
-        CONCAT(buffer, ","+JSON.stringify(types));
+    //if (this._flags & Preprocessor.Flags.IncludeDebugSymbols) //flags.IncludeTypeSignatures)
+    //    CONCAT(buffer, ","+JSON.stringify(types));
     CONCAT(buffer, ")");
 
     this._currentSelector = "";
