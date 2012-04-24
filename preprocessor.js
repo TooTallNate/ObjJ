@@ -614,7 +614,7 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
     }
 
     // finish the function statement and execute it
-    CONCAT(buffer, '})();');
+    CONCAT(buffer, '})();\n');
 
     this._currentClass = "";
 }
