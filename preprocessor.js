@@ -653,9 +653,8 @@ function map_type (type) {
     return '"v"';
   } else if (type === 'id') {
     return '"@"';
-  } else {
-    return type;
   }
+  return '"@"';
 }
 
 Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
