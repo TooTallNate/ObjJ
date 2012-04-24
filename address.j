@@ -28,6 +28,8 @@
 
 @end
 
+var pool = [[NSAutoreleasePool alloc] init];
+
 // now we can do stuff for the main file
 var a = [[Address alloc] initWithName: @"Greenfield Ave." city: @"San Rafael"];
 console.log(a);
