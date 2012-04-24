@@ -468,6 +468,7 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
         CONCAT(buffer, ".extend('");
         CONCAT(buffer, class_name);
         CONCAT(buffer, "');\n");
+        CONCAT(buffer, "  var meta_class = the_class.getClass();\n");
 
         // If we are at an opening curly brace ('{'), then we have an ivar declaration.
         if (token == TOKEN_OPEN_BRACE)
@@ -734,7 +735,12 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
     var index = 0,
         count = parameters.length;
 
-    CONCAT(buffer, "  the_class.addMethod(\"");
+    if (this._classMethod) {
+      CONCAT(buffer, "  meta_class.");
+    } else {
+      CONCAT(buffer, "  the_class.");
+    }
+    CONCAT(buffer, "addMethod(\"");
 
     // first the selector
     CONCAT(buffer, selector);
