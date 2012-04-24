@@ -742,7 +742,7 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
     // then the types
     CONCAT(buffer, "\", { retval: ");
     CONCAT(buffer, map_type(types[0]));
-    CONCAT(buffer, ", args: [ ");
+    CONCAT(buffer, ", args: [ \"@\", \":\", ");
     for (var i = 1; i < types.length; i++) {
       CONCAT(buffer, map_type(types[1]));
       if (i+1 != types.length) {
