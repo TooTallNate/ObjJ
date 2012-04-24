@@ -501,7 +501,7 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
                     CONCAT(buffer, "  the_class.addIvar('");
                     CONCAT(buffer, name);
                     CONCAT(buffer, "', ");
-                    CONCAT(buffer, type);
+                    CONCAT(buffer, map_type(type));
                     CONCAT(buffer, ");\n");
 
                     ivar_names[name] = 1;
