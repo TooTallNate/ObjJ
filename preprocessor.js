@@ -741,7 +741,6 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
     var index = 0,
         count = parameters.length;
 
-    console.error(types)
     CONCAT(buffer, "  the_class.addMethod(\"");
 
     // first the selector
