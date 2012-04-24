@@ -159,8 +159,6 @@ exports.eval = function(/*String*/ aString)
     return eval(exports.preprocess(aString).code());
 }
 
-var $ = '__NodObjC__';
-
 var Preprocessor = function(/*String*/ aString, /*CFURL|String*/ aURL, /*unsigned*/ flags)
 {
     this._URL = aURL;
@@ -186,7 +184,7 @@ var Preprocessor = function(/*String*/ aString, /*CFURL|String*/ aURL, /*unsigne
 
     this._classVars = {};
 
-    CONCAT(this._buffer, 'var ' + $ + ' = require(\'NodObjC\');\n\n');
+    CONCAT(this._buffer, 'require("NodObjC").global();\n\n');
 
     /*var classObject = new objj_class();
     for (var i in classObject)
@@ -361,8 +359,7 @@ Preprocessor.prototype.directive = function(tokens, aStringBuffer, allowedDirect
 
     // Convert @"strings" to NSString instances
     if (token.charAt(0) === TOKEN_DOUBLE_QUOTE) {
-        CONCAT(buffer, $);
-        CONCAT(buffer, '.NSString("stringWithUTF8String", ');
+        CONCAT(buffer, 'NSString("stringWithUTF8String", ');
         CONCAT(buffer, token);
         CONCAT(buffer, ')');
     }
@@ -467,8 +464,6 @@ Preprocessor.prototype.implementation = function(tokens, /*StringBuffer*/ aStrin
         }
 
         CONCAT(buffer, ";(function () {\n  var the_class = ");
-        CONCAT(buffer, $);
-        CONCAT(buffer, '.');
         CONCAT(buffer, superclass_name);
         CONCAT(buffer, ".extend('");
         CONCAT(buffer, class_name);
@@ -645,8 +640,7 @@ Preprocessor.prototype._import = function(tokens)
     else
         throw new SyntaxError(this.error_message("*** Expecting '<' or '\"', found \"" + token + "\"."));
 
-    CONCAT(this._buffer, $);
-    CONCAT(this._buffer, ".import(\'");
+    CONCAT(this._buffer, "importFramework(\'");
     CONCAT(this._buffer, URLString);
     CONCAT(this._buffer, "\');\n");
     //CONCAT(this._buffer, isQuoted ? "\", YES);" : "\", NO);");
