@@ -184,7 +184,7 @@ var Preprocessor = function(/*String*/ aString, /*CFURL|String*/ aURL, /*unsigne
 
     this._classVars = {};
 
-    CONCAT(this._buffer, 'require("NodObjC").global();\n\n');
+    CONCAT(this._buffer, 'require("NodObjC/global");\n\n');
 
     /*var classObject = new objj_class();
     for (var i in classObject)
