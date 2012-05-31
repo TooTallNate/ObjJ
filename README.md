@@ -46,7 +46,8 @@ Examples
 var pool = [[NSAutoreleasePool alloc] init];
 
 var person = [[Person alloc] initWithName: @"Nathan"];
-console.log(person);
+console.log([person name]);
+// "Nathan"
 ```
 
 
