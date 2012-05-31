@@ -41,10 +41,16 @@ Examples
 - (NSString *) name {
   return name;
 }
+
++ (id) allocWithName: (NSString *)aName {
+  return [[self alloc] initWithName: aName];
+}
 @end
 
+// create an NSAutoreleasePool instance
 var pool = [[NSAutoreleasePool alloc] init];
 
+// create one of our Person instances
 var person = [[Person alloc] initWithName: @"Nathan"];
 console.log([person name]);
 // "Nathan"
