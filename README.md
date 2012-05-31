@@ -14,7 +14,7 @@ Installation
 Install with `npm`:
 
 ``` bash
-$ npm install objj
+$ npm install -g objj
 ```
 
 
