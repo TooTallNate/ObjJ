@@ -22,16 +22,31 @@ Examples
 --------
 
 ``` objj
-#import <Foundation>
+@import <Foundation>
 
-var pool = [[NSAutoreleasePool alloc] init];
-
+// creating a new Class, inheriting from NSObject
 @implementation Person : NSObject {
   NSString *name;
 }
+- (id)initWithName: (NSString *) aName {
+  self = [super init];
+  [self setName: name];
+  return self;
+}
+
+- (void) setName: (NSString *) aName {
+  name = aName;
+}
+
+- (NSString *) name {
+  return name;
+}
 @end
 
+var pool = [[NSAutoreleasePool alloc] init];
 
+var person = [[Person alloc] initWithName: @"Nathan"];
+console.log(person);
 ```
 
 
