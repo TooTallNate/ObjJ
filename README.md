@@ -51,7 +51,7 @@ Examples
 var pool = [[NSAutoreleasePool alloc] init];
 
 // create one of our Person instances
-var person = [[Person alloc] initWithName: @"Nathan"];
+var person = [[Person allocWithName: @"Nathan"];
 console.log([person name]);
 // "Nathan"
 ```
