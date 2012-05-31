@@ -644,7 +644,7 @@ Preprocessor.prototype._import = function(tokens)
     else
         throw new SyntaxError(this.error_message("*** Expecting '<' or '\"', found \"" + token + "\"."));
 
-    CONCAT(this._buffer, "importFramework(\'");
+    CONCAT(this._buffer, "framework(\'");
     CONCAT(this._buffer, URLString);
     CONCAT(this._buffer, "\');\n");
     //CONCAT(this._buffer, isQuoted ? "\", YES);" : "\", NO);");
