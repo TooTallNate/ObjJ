@@ -777,6 +777,7 @@ Preprocessor.prototype.method = function(/*Lexer*/ tokens, ivar_names)
 
     CONCAT(buffer, ") {\n    with (self) {\n");
     CONCAT(buffer, "// BEGIN METHOD IMPLEMENTATION\n");
+    console.error(tokens)
     CONCAT(buffer, this.preprocess(tokens, null, TOKEN_CLOSE_BRACE, TOKEN_OPEN_BRACE));
     CONCAT(buffer, "// END METHOD IMPLEMENTATION\n");
     CONCAT(buffer, "    }\n  }");

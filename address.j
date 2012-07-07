@@ -6,10 +6,12 @@
 }
 
 - (id)initWithName:(NSString)aName city:(NSString)aCity {
-  self = [super init];
-
-  name = aName;
-  city = aCity;
+  console.log('before');
+  if (self = [super init]) {
+    console.log('after');
+    name = aName;
+    city = aCity;
+  }
 
   return self;
 }
@@ -30,6 +32,11 @@
 
 var pool = [[NSAutoreleasePool alloc] init];
 
+console.log(Address.methods());
+
 // now we can do stuff for the main file
 var a = [[Address alloc] initWithName: @"Greenfield Ave." city: @"San Rafael"];
-console.log(a);
+console.log(a.methods());
+console.log(a('class'));
+console.log(a.ivars(Infinity));
+a
